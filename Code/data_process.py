@@ -33,7 +33,7 @@ if not os.path.exists(new_path):
 	createClassFolders(new_path + '/validation', diseases)
 	createClassFolders(new_path + '/test', diseases)
 else:
-	raise Error("Directory already exists")
+	print("Directory already exists")
 
 # Read and parse audio files
 # ------------------------------------------------------------------------------------
@@ -49,28 +49,32 @@ if len(txt_files) != len(wav_files):
 	raise Error("Warning! number of text files and wave files does not match")
 
 counter = 0
-for i in range(len(txt_files)):
+for tfile in txt_files:
 #for i in range(5):
-	print("file: {}".format(i))
-	tf = db_path + '/txt/' + txt_files[i]
-	wf = db_path + '/wav/' + wav_files[i]
+	print("file: {}".format(tfile))
+	filename, extension = os.path.splitext(tfile)
 
-	# Read time cycle from text file
-	cycles = pd.read_csv(tf, sep="\t", header=None, names=txt_cols)
-	# Read sound file
-	wav = AudioSegment.from_wav(wf)
+	tf = db_path + '/txt/' + tfile
+	wf = db_path + '/wav/' + filename + '.wav'
+
 	# Find corresponding label
-	tf_split = txt_files[i].split("_")
+	tf_split = tfile.split("_")
 	patient_id = int(tf_split[0])
 
 	info = diag.loc[diag['patient_id'] == patient_id]
 	label= info['diagnosis'].to_string(index=False).strip()
 
-	
+	# Read time cycle from text file
+	cycles = pd.read_csv(tf, sep="\t", header=None, names=txt_cols)
+	# Read sound file
+	wav = AudioSegment.from_wav(wf)
+
 	for i, c in cycles.iterrows():
 		# Get cycle time and convert to millisecond
 		st = int(float(c['Start']) * 1000)
 		et = int(float(c['End']) * 1000)
+
+		print("time length: {}".format(et - st))
 
 		audio = wav[st:et]
 		fname = label + "_" + str(patient_id) + "_" + str(counter) + '.wav'
@@ -81,6 +85,7 @@ for i in range(len(txt_files)):
 		counter += 1
 
 np_data = np.column_stack((filenames, labels))
+np.random.seed(360)
 np.random.shuffle(np_data)
 #df_data = pd.DataFrame(list(zip(filenames, labels)), columns =['filename', 'label'])
 
