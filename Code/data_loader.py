@@ -29,7 +29,7 @@ from torchvision.datasets import DatasetFolder
 
 #helper function
 def pad(x):
-    padded = torch.zeros([40, 1506])
+    padded = torch.zeros([40, 1727])
     padded[:, :x.size()[2]] = x.squeeze()
     return padded
 
@@ -47,8 +47,8 @@ def get_data_loader(batch_size):
     testset = DatasetFolder(root='../kaggle_db/processed_sound/test/', loader=torchaudio.load,
                              extensions='.wav', transform=tsfm)
 
-    train_loader = DataLoader(trainset, batch_size=batch_size, num_workers=0)
-    val_loader = DataLoader(valset, batch_size=batch_size, num_workers=0)
-    test_loader = DataLoader(testset, batch_size=batch_size, num_workers=0)
+    train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=0)
+    test_loader = DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=0)
 
     return train_loader, val_loader, None
