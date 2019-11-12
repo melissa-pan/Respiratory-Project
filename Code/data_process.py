@@ -5,10 +5,10 @@ import pandas as pd
 import numpy as np
 import os
 
-path = '/Users/melissapan/Documents/Melissa/APS360/'
+#path = '.'
 # Get all patient's diagnositic information
 # ------------------------------------------------------------------------------------
-diag_path = path + '/project/kaggle_db/Respiratory_Sound_Database/patient_diagnosis.csv'
+diag_path = '../kaggle_db/Respiratory_Sound_Database/patient_diagnosis.csv'
 diag = pd.read_csv(diag_path, header=None, index_col=False, names=['patient_id', 'diagnosis'])
 
 # Total number of class
@@ -16,7 +16,7 @@ diseases = set(diag["diagnosis"])
 
 # Create new directory for processed data
 # ------------------------------------------------------------------------------------
-new_path = path + '/project/kaggle_db/processed_sound'
+new_path = '../kaggle_db/processed_sound'
 data_file = new_path + '/data.csv'
 
 def createClassFolders(path, classes):
@@ -37,7 +37,7 @@ else:
 
 # Read and parse audio files
 # ------------------------------------------------------------------------------------
-db_path = path + '/project/kaggle_db/Respiratory_Sound_Database'
+db_path = '../kaggle_db/Respiratory_Sound_Database'
 txt_files = [f for f in os.listdir(db_path + "/txt") if f.endswith('.txt')]
 wav_files = [f for f in os.listdir(db_path + "/wav") if f.endswith('.wav')]
 txt_cols = ['Start', 'End', 'Crackles', 'Wheezes']
