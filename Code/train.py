@@ -71,6 +71,8 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
     np.savetxt("{}_val_err.csv".format(model_path), val_err)
     np.savetxt("{}_val_loss.csv".format(model_path), val_loss)
 
+    plot_training_curve(model_path)
+
 ###############################################################################
 # Training
 def get_model_name(name, batch_size, learning_rate, epoch):
