@@ -1,0 +1,5 @@
+kaggle_db/processed_sound/
+#kaggle_db/processed_sound/validation/*.wav
+
+Code/__pycache__/
+Code/model*

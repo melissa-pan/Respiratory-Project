@@ -69,14 +69,13 @@ def get_data_loader(batch_size):
 class SVMClassifier(nn.Module):
     def __init__(self):
         super(SVMClassifier, self).__init__()
+        self.name = "SVM"
         self.layer1 = nn.Linear(40 * 1727, 6)
 
     def forward(self, img):
         flattened = img.view(-1, 40 * 1727)
         return self.layer1(flattened)
 
-batch_sz = 64
-train_loader, val_loader, test_loader = get_data_loader(batch_sz)
 
 # Training
 def get_model_name(name, batch_size, learning_rate, epoch):
@@ -155,8 +154,8 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
     # Obtain the PyTorch data loader objects to load batches of the datasets
     train_loader, val_loader, test_loader = get_data_loader(batch_size)
     ########################################################################
-    criterion = torch.nn.MultiMarginLoss()
-    optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9)
+    criterion = torch.nn.MultiLabelMarginLoss()
+    optimizer = optim.SGD(net.parameters(), lr=learning_rate)
     #optimizer = optim.Adam(net.parameters(), lr=learning_rate)
     ########################################################################
     # Set up some numpy arrays to store the training/test loss/erruracy
@@ -184,13 +183,14 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
             optimizer.zero_grad()
             # Forward pass, backward pass, and optimize
             outputs = net(inputs)
-            loss = criterion(outputs, labels.long())
+            print(outputs.shape, labels.shape)
+            loss = criterion(outputs, labels)
             print(loss.item())
             loss.backward()
             optimizer.step()
             # Calculate the statistics
-            corr = outputs.max(dim=1).indices.long() != labels
-            total_train_err += int(corr.sum())
+            err = outputs.max(dim=1).indices.long() != labels
+            total_train_err += int(err.sum())
             total_train_loss += loss.item()
             total_epoch += len(labels)
         train_err[epoch] = float(total_train_err)/total_epoch
@@ -211,21 +211,25 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
     elapsed_time = end_time - start_time
     print("Total time elapsed: {:.2f} seconds".format(elapsed_time))
     # Write the train/test loss/err into CSV file for plotting later
-    epochs = np.arange(1, num_epochs + 1)
+    epochs = np.arange(1, num_epochs+1)
     np.savetxt("{}_train_err.csv".format(model_path), train_err)
     np.savetxt("{}_train_loss.csv".format(model_path), train_loss)
     np.savetxt("{}_val_err.csv".format(model_path), val_err)
     np.savetxt("{}_val_loss.csv".format(model_path), val_loss)
 
 
+lr, bs, num_epo = 0.001, 256, 20
+training = True
+if training:
+    model2 = SVMClassifier()
+    if torch.cuda.is_available():
+      model2.cuda()
+      print('CUDA is available!  Training on GPU ...')
+    else:
+      print('CUDA is not available.  Training on CPU ...')
+    #lr, bs, num_epo = 0.01, 128, 10
 
-model2 = SVMClassifier()
-if torch.cuda.is_available():
-  model2.cuda()
-  print('CUDA is available!  Training on GPU ...')
-else:
-  print('CUDA is not available.  Training on CPU ...')
-lr, bs, num_epo = 0.01, 64, 10
-train_net(model2, batch_size=bs, learning_rate=lr, num_epochs=20)
-
-path = get_model_name(model2.name, bs, lr, num_epo-1)
+    train_net(model2, batch_size=bs, learning_rate=lr, num_epochs=num_epo)
+else: 
+    path = get_model_name(model2.name, bs, lr, num_epo-1)
+    plot_training_curve(path)
