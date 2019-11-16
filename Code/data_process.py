@@ -14,6 +14,11 @@ diag = pd.read_csv(diag_path, header=None, index_col=False, names=['patient_id',
 # Total number of class
 diseases = set(diag["diagnosis"])
 
+dict_data = {}
+
+for d in diseases:
+	dict_data[d] = []
+
 # Create new directory for processed data
 # ------------------------------------------------------------------------------------
 new_path = '../kaggle_db/processed_sound'
@@ -50,7 +55,6 @@ if len(txt_files) != len(wav_files):
 
 counter = 0
 for tfile in txt_files:
-#for i in range(5):
 	print("file: {}".format(tfile))
 	filename, extension = os.path.splitext(tfile)
 
@@ -80,8 +84,11 @@ for tfile in txt_files:
 		fname = label + "_" + str(patient_id) + "_" + str(counter) + '.wav'
 		audio.export(new_path + '/' + fname, format="wav")
 
-		filenames.append(fname)
-		labels.append(label)
+		# filenames.append(fname)
+		# labels.append(label)
+
+		dict_data[label].append(fname)
+
 		counter += 1
 
 np_data = np.column_stack((filenames, labels))
@@ -91,39 +98,49 @@ np.random.shuffle(np_data)
 
 #print(df_data['label'].value_counts())
 
-
 # Split into train validation and test sets
 # ------------------------------------------------------------------------------------
-trIdx = int(0.6*len(np_data))
-vlIdx = int(0.2*len(np_data))
-train = np_data[0: trIdx]
-valid = np_data[trIdx: trIdx + vlIdx]
-test  = np_data[trIdx + vlIdx:,]
+def split_and_save(np_data):
+	trIdx = int(0.5*len(np_data))
+	vlIdx = int(0.2*len(np_data))
+	train = np_data[0: trIdx]
+	valid = np_data[trIdx: trIdx + vlIdx]
+	test  = np_data[trIdx + vlIdx:,]
 
-print("Train data: {}".format(len(train)))
-print("Valid data: {}".format(len(valid)))
-print("Test  data: {}".format(len(test)))
+	print("Train data: {}".format(len(train)))
+	print("Valid data: {}".format(len(valid)))
+	print("Test  data: {}".format(len(test)))
 
-# Move data into corresponding folders
+	# Move data into corresponding folders
+	# ------------------------------------------------------------------------------------
+	for fname, label in train:
+		try:
+			shutil.move(new_path + '/' + fname, new_path + '/train/' + label + '/' + fname)
+		except Exception as e:
+			print("Warning: {} has error".format(fname))
+			pass
+		
+
+	for fname, label in valid:
+		try:
+			shutil.move(new_path + '/' + fname, new_path + '/validation/' + label + '/' + fname)
+		except Exception as e:
+			print("Warning: {} has error".format(fname))
+			pass
+
+	for fname, label in test:
+		try:
+			shutil.move(new_path + '/' + fname, new_path + '/test/' + label + '/' + fname)
+		except Exception as e:
+			print("Warning: {} has error".format(fname))
+			pass
+
+# Organize data by labels
 # ------------------------------------------------------------------------------------
-for fname, label in train:
-	try:
-		shutil.move(new_path + '/' + fname, new_path + '/train/' + label + '/' + fname)
-	except Exception as e:
-		print("Warning: {} has error".format(fname))
-		pass
-	
+for k,v in dict_data.items():
+	np_label = np.full((len(v)), k)
+	np_data = np.column_stack((v, np_label))
+	print("label: {}".format(k))
+	split_and_save(np_data)
 
-for fname, label in valid:
-	try:
-		shutil.move(new_path + '/' + fname, new_path + '/validation/' + label + '/' + fname)
-	except Exception as e:
-		print("Warning: {} has error".format(fname))
-		pass
 
-for fname, label in test:
-	try:
-		shutil.move(new_path + '/' + fname, new_path + '/test/' + label + '/' + fname)
-	except Exception as e:
-		print("Warning: {} has error".format(fname))
-		pass
