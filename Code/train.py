@@ -7,12 +7,17 @@ import matplotlib.pyplot as plt
 
 from data_loader import get_data_loader
 
-def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
+global label_to_class
+
+def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30, reload_epoch=0, model_path=None):
     # Fixed PyTorch random seed for reproducible result
     torch.manual_seed(360)
     ########################################################################
     # Obtain the PyTorch data loader objects to load batches of the datasets
-    train_loader, val_loader, test_loader = get_data_loader(batch_size)
+    train_loader, val_loader, test_loader, class_to_label = get_data_loader(batch_size)
+
+    global label_to_class 
+    label_to_class = {v: k for k, v in class_to_label.items()}
     ########################################################################
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=learning_rate)
@@ -22,15 +27,24 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
     train_loss = np.zeros(num_epochs)
     val_err = np.zeros(num_epochs)
     val_loss = np.zeros(num_epochs)
+
+    # Read prvious record if reload_epoch is not 0
+    if model_path is not None:
+        train_err[0:reload_epoch] = np.loadtxt("{}_train_err.csv".format(model_path))
+        val_err[0:reload_epoch]= np.loadtxt("{}_val_err.csv".format(model_path))
+        train_loss[0:reload_epoch] = np.loadtxt("{}_train_loss.csv".format(model_path))
+        val_loss[0:reload_epoch] = np.loadtxt("{}_val_loss.csv".format(model_path))
+
     ########################################################################
     # Train the network
     # Loop over the data iterator and sample a new batch of training data
     # Get the output from the network, and optimize our loss function.
     start_time = time.time()
-    for epoch in range(num_epochs):  # loop over the dataset multiple times
+    for epoch in range(reload_epoch, num_epochs):  # loop over the dataset multiple times
         total_train_loss = 0.0
         total_train_err = 0.0
         total_epoch = 0
+        net.train()
         for i, data in enumerate(train_loader, 0):
             # Get the inputs
             inputs, labels = data
@@ -38,6 +52,7 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
             optimizer.zero_grad()
             # Forward pass, backward pass, and optimize
             outputs = net(inputs)
+            #findMisclassified(outputs, labels)
             loss = criterion(outputs, labels.long())
             print(loss)
             loss.backward()
@@ -49,9 +64,10 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
             total_epoch += len(labels)
         train_err[epoch] = float(total_train_err) / total_epoch
         train_loss[epoch] = float(total_train_loss) / (i+1)
+        net.eval()
         val_err[epoch], val_loss[epoch] = evaluate(net, val_loader, criterion)
         print(("Epoch {}: Train err: {}, Train loss: {} |"+
-               "Validation err: {}, Validation loss: {}").format(
+               "Validation err: {}, Validation loss: {}\n\n").format(
                    epoch + 1,
                    train_err[epoch],
                    train_loss[epoch],
@@ -71,7 +87,7 @@ def train_net(net, batch_size=64, learning_rate=0.01, num_epochs=30):
     np.savetxt("{}_val_err.csv".format(model_path), val_err)
     np.savetxt("{}_val_loss.csv".format(model_path), val_loss)
 
-    plot_training_curve(model_path)
+    # plot_training_curve(model_path)
 
 ###############################################################################
 # Training
@@ -111,6 +127,7 @@ def evaluate(net, loader, criterion):
         total_err += int(corr.sum())
         total_loss += loss.item()
         total_epoch += len(labels)
+    findMisclassified(outputs, labels)
     err = float(total_err) / total_epoch
     loss = float(total_loss) / (i + 1)
     return err, loss
@@ -128,14 +145,20 @@ def plot_training_curve(path):
     val_err = np.loadtxt("{}_val_err.csv".format(path))
     train_loss = np.loadtxt("{}_train_loss.csv".format(path))
     val_loss = np.loadtxt("{}_val_loss.csv".format(path))
-    plt.title("Train vs Validation Error")
-    n = len(train_err) # number of epochs
-    plt.plot(range(1,n+1), train_err, label="Train")
-    plt.plot(range(1,n+1), val_err, label="Validation")
+
+    # err to acc
+    train_acc = 1 - train_err
+    val_acc = 1 - val_err
+
+    plt.title("Train vs Validation Accuracy")
+    n = len(train_acc) # number of epochs
+    plt.plot(range(1,n+1), train_acc, label="Train")
+    plt.plot(range(1,n+1), val_acc, label="Validation")
     plt.xlabel("Epoch")
-    plt.ylabel("Error")
+    plt.ylabel("Accuracy")
     plt.legend(loc='best')
     plt.show()
+
     plt.title("Train vs Validation Loss")
     plt.plot(range(1,n+1), train_loss, label="Train")
     plt.plot(range(1,n+1), val_loss, label="Validation")
@@ -143,3 +166,25 @@ def plot_training_curve(path):
     plt.ylabel("Loss")
     plt.legend(loc='best')
     plt.show()
+
+###############################################################################
+# Find Misclassified Points
+def findMisclassified(out, label):
+    classes, class_freq = np.unique(label, return_counts=True)
+    err = {c: 0 for c in classes}
+
+    # Find incorrect heuristic
+    for i in range(len(label)):
+        l = label[i].item()
+        p = out[i].max(dim=0).indices.long().item()
+        if l != p:
+            err[l] += 1
+
+    # From label to class
+    err_class = {label_to_class[k] : v for k, v in err.items()}
+
+    # Find accuracy rate for each class
+    acc_rate = {label_to_class[classes[i]] : round(1 - err[classes[i]]/class_freq[i], 4) for i in range(len(class_freq))}
+
+    print("Misclassify Info: {}".format(err_class))
+    print("Class Accuracy Rate: {}".format(acc_rate))
