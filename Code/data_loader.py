@@ -51,4 +51,4 @@ def get_data_loader(batch_size):
     val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=0)
     test_loader = DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=0)
 
-    return train_loader, val_loader, None
+    return train_loader, val_loader, None, trainset.class_to_idx
